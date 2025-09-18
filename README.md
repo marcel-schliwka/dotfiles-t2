@@ -7,7 +7,7 @@
 
 ![GitHub repo size](https://img.shields.io/github/repo-size/marcel-schliwka/dotfiles-t2?label=Repo%20Size&color=blueviolet)
 ![GitHub last commit](https://img.shields.io/github/last-commit/marcel-schliwka/dotfiles-t2?color=green)
-![License](https://img.shields.io/badge/license-MIT-informational)
+![License](https://img.shields.io/badge/license-GLWTS--No--LLMs-red?style=flat-square)
 
 [![T2 Linux](https://img.shields.io/badge/Powered%20by-T2%20Linux-blue?logo=apple)](https://t2linux.org/)  
 [![Omarchy](https://img.shields.io/badge/Inspiration-Omarchy-black?logo=github)](https://github.com/basecamp/omarchy)
