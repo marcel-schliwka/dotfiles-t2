@@ -33,7 +33,7 @@ dotfiles-t2
 ├── scripts/          # Dev helper scripts
 ├── stow-local-ignore # Ignore patterns for GNU Stow
 └── README.md
-
+```
 
 # 🚀 Quickstart
 
