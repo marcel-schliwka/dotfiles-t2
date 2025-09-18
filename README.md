@@ -67,8 +67,8 @@ GH_PRO_TOKEN   # Personal/professional GitHub access
 GH_GART_TOKEN  # Org-specific GitHub access
 
 # 💡 Philosophy
-Dotfiles should be portable, reproducible, and beautifully boring.
-This repo exists so a new system can go from 🆕 → 💻 dev-ready in minutes.
+> Dotfiles should be portable, reproducible, and beautifully boring.
+> This repo exists so a new system can go from 🆕 → 💻 dev-ready in minutes.
 
 # 🛡️ Disclaimer
 Dotfiles should be portable, reproducible, and beautifully boring.
