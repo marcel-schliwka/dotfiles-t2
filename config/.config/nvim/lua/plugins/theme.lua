@@ -1,1 +1,1 @@
-/home/marcel/.config/omarchy/current/theme/neovim.lua
+../../../omarchy/current/theme/neovim.lua
