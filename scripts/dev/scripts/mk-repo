@@ -1,0 +1,167 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+# ====== optional: Tokens aus Datei laden ======
+CONFIG_FILE="$HOME/.config/mk-repo/env"
+[[ -f "$CONFIG_FILE" ]] && . "$CONFIG_FILE"
+
+# ===== User & Orgs (Slugs exakt wie auf GitHub) =====
+GH_USER_KERNEL="kernel0verflow42"
+GH_USER_PRO="marcel-schliwka"
+ORG_CODECANVAS="Codecanvas-Websolutions"
+ORG_GART="Gartenanlage-Morgensonne-e-V"
+
+# ===== Tokens aus ENV =====
+TOKEN_KERNEL="${GH_KERNEL_TOKEN:-}"
+TOKEN_PRO="${GH_PRO_TOKEN:-}"
+
+# ===== lokale Pfade =====
+BASE_PRIVAT="$HOME/dev/privat"
+BASE_PRO="$HOME/dev/professional"
+BASE_CODECANVAS="$HOME/dev/professional/codecanvas"
+BASE_GART="$HOME/dev/professional/gartenanlage"
+
+show_help() {
+  cat <<EOF
+Usage:
+  mk-repo <name> <privat|professional|codecanvas|gart> [private|public]
+  mk-repo --check <professional|codecanvas|gart>
+
+Erstellt ein GitHub-Repo (User oder Org) und initialisiert es lokal.
+
+Targets:
+  privat        -> $GH_USER_KERNEL   (SSH host: github-kernel)   Pfad: $BASE_PRIVAT/<name>
+  professional  -> $GH_USER_PRO      (SSH host: github-primary)  Pfad: $BASE_PRO/<name>
+  codecanvas    -> $ORG_CODECANVAS   (SSH host: github-primary)  Pfad: $BASE_CODECANVAS/<name>
+  gart          -> $ORG_GART         (SSH host: github-primary)  Pfad: $BASE_GART/<name>
+
+Tokens:
+  - PRO:   GH_PRO_TOKEN   (für professional + Orgs)
+  - KERNEL: GH_KERNEL_TOKEN (für privat)
+  Tokens können in $CONFIG_FILE liegen und werden automatisch geladen.
+
+Checks:
+  --check <target>   Prüft Token/SSO für das Ziel (macht KEIN Repo!).
+EOF
+}
+
+require_token() {
+  local target="$1" token="$2"
+  if [[ -z "$token" ]]; then
+    echo "❌ Kein Token für '$target' gefunden."
+    echo "   Setze die Variable in der Shell oder in $CONFIG_FILE:"
+    echo "     export GH_PRO_TOKEN=...   # für professional / Orgs"
+    echo "     export GH_KERNEL_TOKEN=... # für privat"
+    exit 1
+  fi
+}
+
+check_target() {
+  local tgt="$1"
+  case "$tgt" in
+    professional)
+      require_token professional "$TOKEN_PRO"
+      echo "🔎 Prüfe PRO-Token gegen User-API..."
+      curl -sSI -H "Authorization: token $TOKEN_PRO" https://api.github.com/user | grep -i "x-oauth-scopes" || true
+      echo "🔎 OK."
+      ;;
+    codecanvas)
+      require_token codecanvas "$TOKEN_PRO"
+      echo "🔎 Prüfe SSO/Autorisierung für Org $ORG_CODECANVAS ..."
+      curl -sSI -H "Authorization: token $TOKEN_PRO" "https://api.github.com/orgs/$ORG_CODECANVAS" | grep -Ei "x-github-sso|status" || true
+      ;;
+    gart)
+      require_token gart "$TOKEN_PRO"
+      echo "🔎 Prüfe SSO/Autorisierung für Org $ORG_GART ..."
+      curl -sSI -H "Authorization: token $TOKEN_PRO" "https://api.github.com/orgs/$ORG_GART" | grep -Ei "x-github-sso|status" || true
+      ;;
+    privat)
+      require_token privat "$TOKEN_KERNEL"
+      echo "🔎 Kernel-Token kurz prüfen..."
+      curl -sSI -H "Authorization: token $TOKEN_KERNEL" https://api.github.com/user | grep -i "x-oauth-scopes" || true
+      ;;
+    *)
+      echo "Unbekanntes Target: $tgt"; exit 1;;
+  esac
+  echo "✅ Check abgeschlossen."
+}
+
+create_user_repo() {
+  local token="$1" name="$2" vis="$3"
+  curl -sS -H "Authorization: token $token" -H "Accept: application/vnd.github+json" \
+       https://api.github.com/user/repos \
+       -d "{\"name\":\"$name\",\"private\":$([[ "$vis" == "private" ]] && echo true || echo false)}"
+}
+
+create_org_repo() {
+  local token="$1" org="$2" name="$3" vis="$4"
+  curl -sS -H "Authorization: token $token" -H "Accept: application/vnd.github+json" \
+       "https://api.github.com/orgs/${org}/repos" \
+       -d "{\"name\":\"$name\",\"private\":$([[ "$vis" == "private" ]] && echo true || echo false)}"
+}
+
+# ===== Argumente =====
+[[ $# -lt 1 ]] && { show_help; exit 1; }
+case "${1:-}" in
+  -h|--help) show_help; exit 0;;
+  --check)
+    [[ $# -lt 2 ]] && { echo "Fehlender Target für --check"; exit 1; }
+    check_target "$2"; exit 0;;
+esac
+
+[[ $# -lt 2 ]] && { echo "❌ Zu wenige Argumente.\n"; show_help; exit 1; }
+
+REPO="$1"; TARGET="$2"; VIS="${3:-private}"
+
+case "$TARGET" in
+  privat)
+    require_token privat "$TOKEN_KERNEL"
+    OWNER="$GH_USER_KERNEL"; TOKEN="$TOKEN_KERNEL"; BASE="$BASE_PRIVAT"; HOST="github-kernel"; CREATOR="user" ;;
+  professional)
+    require_token professional "$TOKEN_PRO"
+    OWNER="$GH_USER_PRO";    TOKEN="$TOKEN_PRO";    BASE="$BASE_PRO";    HOST="github-primary"; CREATOR="user" ;;
+  codecanvas)
+    require_token codecanvas "$TOKEN_PRO"
+    OWNER="$ORG_CODECANVAS"; TOKEN="$TOKEN_PRO";    BASE="$BASE_CODECANVAS"; HOST="github-primary"; CREATOR="org" ;;
+  gart)
+    require_token gart "$TOKEN_PRO"
+    OWNER="$ORG_GART";       TOKEN="$TOKEN_PRO";    BASE="$BASE_GART";      HOST="github-primary"; CREATOR="org" ;;
+  *)
+    echo "❌ Unbekanntes Target: $TARGET"; show_help; exit 1 ;;
+esac
+
+# ===== lokalen Ordner anlegen =====
+mkdir -p "$BASE/$REPO"
+cd "$BASE/$REPO"
+
+# ===== Remote-Repo anlegen =====
+echo "📡 Erstelle '$REPO' auf GitHub ($TARGET, $VIS)..."
+if [[ "$CREATOR" == "user" ]]; then
+  RESP="$(create_user_repo "$TOKEN" "$REPO" "$VIS")"
+else
+  RESP="$(create_org_repo "$TOKEN" "$OWNER" "$REPO" "$VIS")"
+fi
+
+# Erfolg prüfen
+if echo "$RESP" | grep -q '"ssh_url"'; then
+  echo "$RESP" | grep -E '"html_url"|"ssh_url"' || true
+else
+  echo "❌ Repo-Erstellung fehlgeschlagen."
+  if command -v jq >/dev/null 2>&1; then
+    echo "$RESP" | jq -r '.message // .errors[]?.message // .'
+  else
+    echo "$RESP"
+  fi
+  exit 1
+fi
+
+# ===== Git init & Push =====
+git init -b main >/dev/null
+echo "# $REPO" > README.md
+git add README.md
+git commit -m "Initial commit" >/dev/null
+
+git remote add origin "git@$HOST:$OWNER/$REPO.git"
+git push -u origin main
+
+echo "✅ Fertig: $BASE/$REPO  →  $OWNER/$REPO"

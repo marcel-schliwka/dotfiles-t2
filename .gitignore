@@ -1,0 +1,30 @@
+# Keine laufzeit-/private Daten
+.config/*/Cache/
+.config/*/cache/
+.config/*/logs/
+.config/*/log/
+.config/*/tmp/
+.config/*/sessions/
+.config/*/Local Storage/
+.config/*/blob_storage/
+
+# Browser/Apps (riesig/sensibel)
+.config/chromium/
+.config/thorium/
+.config/BraveSoftware/
+.config/discord/
+.config/slack/
+.config/spotify/
+.config/Element/
+
+# Keys/Secrets
+.ssh/
+.config/gnome-keyring/
+.config/kwalletd/
+.config/mk-repo/env
+
+# Node & Co
+**/node_modules/
+*.lock
+*.bak
+.DS_Store
